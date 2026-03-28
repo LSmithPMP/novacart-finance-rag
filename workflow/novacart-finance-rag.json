@@ -1,0 +1,1004 @@
+{
+  "name": "Week2- RAG- Assignment",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -928,
+        1192
+      ],
+      "id": "f68007d5-4857-4c9c-8881-34753175625e",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1KcmwQ85V3VlQh7hpYMeYGS__mTr-Hd0F",
+            "mode": "list",
+            "cachedResultName": "NovaCart_Assignment_Internal_Data",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1KcmwQ85V3VlQh7hpYMeYGS__mTr-Hd0F"
+          }
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -704,
+        1192
+      ],
+      "id": "ddac4c1a-0282-4e02-8121-9e4275c51681",
+      "name": "Google Drive (List)"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -480,
+        1192
+      ],
+      "id": "79f2f6b9-f65d-4d31-b3b8-73804c7caca2",
+      "name": "Google Drive (Download)"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        40,
+        992
+      ],
+      "id": "4f0d0d94-d48c-4179-a76b-8c5a58b19bb3",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const row = item.json;\n  if (row.Week_Start_Date && typeof row.Week_Start_Date === 'number') {\n    const jsDate = new Date((row.Week_Start_Date - 25569) * 86400 * 1000);\n    row.Week_Start_Date = jsDate.toISOString().split('T')[0];\n  }\n  const str = Object.keys(row).map(k => `${k}: ${row[k]}`).join(\", \");\n  const b64 = Buffer.from(str).toString('base64');\n  return { json: { text_content: b64, ...row } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        992
+      ],
+      "id": "fe8b2bfa-07e8-4141-878b-343443e6390f",
+      "name": "Format Rows to Text"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.fileExtension}}",
+                    "rightValue": "xlsx",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4fbe6f07-af41-4969-827c-f84070605859"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "bf65c595-a307-44b9-aa75-005ab2a9a223",
+                    "leftValue": "={{$json.fileExtension}}",
+                    "rightValue": "^(pdf|docx|txt)$",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -256,
+        1192
+      ],
+      "id": "82f7920d-2333-4fdb-9c78-04b2215893f2",
+      "name": "Switch (Filter Types)"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "=text_content",
+        "options": {
+          "fileName": "converted_row.txt"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        992
+      ],
+      "id": "d6d6bab9-3b60-4f87-be18-ea24b4b275a8",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "novacart-finance-assignment",
+          "mode": "list",
+          "cachedResultName": "novacart-finance-assignment"
+        },
+        "options": {
+          "pineconeNamespace": "internal"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        816,
+        992
+      ],
+      "id": "f7177ffc-e998-45a0-87ab-958f874a9b19",
+      "name": "Pinecone Vector Store (Excel)"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "source_type",
+                "value": "internal_metric_row"
+              },
+              {
+                "name": "week_start_date",
+                "value": "={{ $json.Week_Start_Date || $json.week_start_date || \"\" }}"
+              },
+              {
+                "name": "product",
+                "value": "={{ $json.Product || $json.product || $json.Product_Name || \"\" }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        1216
+      ],
+      "id": "3da746ab-e907-4fa6-92ad-e92f0ac51051",
+      "name": "Data Loader (Excel)"
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-large",
+        "options": {
+          "dimensions": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        784,
+        1216
+      ],
+      "id": "672ccafc-2e18-48ac-92d3-4d4bbdc12016",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "novacart-finance-assignment",
+          "mode": "list",
+          "cachedResultName": "novacart-finance-assignment"
+        },
+        "options": {
+          "pineconeNamespace": "internal"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        -24,
+        1392
+      ],
+      "id": "2e5d4a0b-9ff1-472e-8c81-83923716237f",
+      "name": "Pinecone Vector Store (Docs)"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "source_type",
+                "value": "internal_doc"
+              },
+              {
+                "name": "drive_file_id",
+                "value": "={{ $json.id }}"
+              },
+              {
+                "name": "file_name",
+                "value": "={{ $json.name }}"
+              },
+              {
+                "name": "drive_url",
+                "value": "={{ $json.webViewLink || $json.alternateLink || $json.url || \"\" }}"
+              },
+              {
+                "name": "mime_type",
+                "value": "={{ $json.mimeType }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -32,
+        1616
+      ],
+      "id": "950206d5-10d6-4061-94e0-41ccc5875685",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 200,
+        "chunkOverlap": 20,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        48,
+        1824
+      ],
+      "id": "e68cd384-6da8-4f16-9356-380a093e3193",
+      "name": "Recursive Character Text Splitter (Docs)"
+    },
+    {
+      "parameters": {
+        "chunkSize": 200,
+        "chunkOverlap": 20,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        992,
+        1424
+      ],
+      "id": "76bc1458-2e03-42c4-bc36-184ab7630178",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -928,
+        352
+      ],
+      "id": "fb5e1d5c-e869-4cb9-abf2-cbfcf88fcd1c",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1rAXe0triAhS2VUQsL7oP1xoGHKTuJ5SZ",
+            "mode": "list",
+            "cachedResultName": "NovaCart_Assignment_external_Data",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1rAXe0triAhS2VUQsL7oP1xoGHKTuJ5SZ"
+          }
+        },
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -704,
+        352
+      ],
+      "id": "2d086474-431c-4fbc-8880-ea9aa1849259",
+      "name": "Google Drive (List)1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -480,
+        352
+      ],
+      "id": "f51e13be-3dd0-48da-aafb-414c8adf6b79",
+      "name": "Google Drive (Download)1"
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-large",
+        "options": {
+          "dimensions": 1024
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        576
+      ],
+      "id": "1cf34745-70b3-42c2-8fb5-d77101fbee34",
+      "name": "Embeddings OpenAI1"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "novacart-finance-assignment",
+          "mode": "list",
+          "cachedResultName": "novacart-finance-assignment"
+        },
+        "options": {
+          "pineconeNamespace": "external"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        -224,
+        352
+      ],
+      "id": "934bf3ac-6874-4623-88ab-3dc9ef11f3e6",
+      "name": "Pinecone Vector Store (Docs)1"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "source_type",
+                "value": "external_report"
+              },
+              {
+                "name": "drive_file_id",
+                "value": "={{ $json.id }}"
+              },
+              {
+                "name": "file_name",
+                "value": "={{ $json.name }}"
+              },
+              {
+                "name": "drive_url",
+                "value": "={{ $json.webViewLink || $json.alternateLink || $json.url || \"\" }}"
+              },
+              {
+                "name": "mime_type",
+                "value": "={{ $json.mimeType }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -128,
+        576
+      ],
+      "id": "02930101-7f81-4554-8980-503c574aa2e2",
+      "name": "Default Data Loader1"
+    },
+    {
+      "parameters": {
+        "chunkSize": 200,
+        "chunkOverlap": 20,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        784
+      ],
+      "id": "5b67736a-f0c0-4ca7-a381-596bc4c2bdcc",
+      "name": "Recursive Character Text Splitter (Docs)1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);\nconst lastOfPrevMonth = new Date(firstOfThisMonth.getTime() - 1);\nconst reportYear = lastOfPrevMonth.getFullYear();\nconst reportMonthIndex = lastOfPrevMonth.getMonth();\nconst reportMonth = reportMonthIndex + 1;\nconst monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];\nconst reportMonthName = monthNames[reportMonthIndex];\nconst periodStart = new Date(reportYear, reportMonthIndex, 1);\nconst periodEnd = new Date(reportYear, reportMonthIndex + 1, 0);\nconst fmt = (d) => d.toISOString().slice(0, 10);\nreturn [{ json: { generated_at: now.toISOString(), report_year: reportYear, report_month: reportMonth, report_month_name: reportMonthName, period_start: fmt(periodStart), period_end: fmt(periodEnd) } }];"
+      },
+      "id": "c44ce885-dff1-4164-8877-53fde52d6414",
+      "name": "Set Reporting Period",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $json;\nconst chatInput = `Create the **Monthly Financial Standing Report** for NovaCart for **${meta.report_month_name} ${meta.report_year}** (period ${meta.period_start} to ${meta.period_end}).\\n\\nRequirements:\\n1) Use the Internal Finance vector store tool to pull internal performance (sales, units, revenue, margins, anomalies) for the month.\\n2) Use the External Market Reports vector store tool to pull market trends, competitor moves, macro conditions, and any relevant category insights.\\n3) Correlate internal performance with external conditions. Explicitly call out what likely drove results.\\n4) Provide a clear narrative plus tables where appropriate.\\n5) Output MUST be valid HTML (no Markdown, no code fences).\\n\\nFocus on decision-useful insights for executives. If any key data is missing, state assumptions and data gaps clearly.`;\nconst sessionId = `monthly_finance_report_${meta.report_year}_${String(meta.report_month).padStart(2,'0')}`;\nreturn [{ json: { ...meta, sessionId, chatInput, text: chatInput } }];"
+      },
+      "id": "addd3daf-01ba-49b2-919d-66f36add6530",
+      "name": "Build Report Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a senior finance & strategy analyst writing for NovaCart executives.\n\nYou MUST:\n- Use BOTH tools at least once: (1) Internal Finance Vector Store Tool and (2) External Market Reports Vector Store Tool.\n- Ground all key claims in retrieved evidence.\n- If evidence is insufficient for a claim, say so explicitly.\n\nOutput requirements:\n- Return a SINGLE HTML string only (no Markdown, no code fences).\n- Use simple inline CSS for email readability.\n- Structure the report with these sections:\n  1) Title + reporting period\n  2) Executive Summary (3-6 bullets)\n  3) KPI Dashboard (table)\n  4) Performance Deep Dive\n  5) Market Context\n  6) Drivers & Correlations\n  7) Risks, Opportunities, Recommendations\n  8) Sources"
+        }
+      },
+      "id": "b67605cc-e37a-4ca0-8f79-0d75afa182f2",
+      "name": "AI Finance Reporting Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -120,
+        -496
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "b0ab9670-9575-4e0b-8a56-e27f06994edc",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this tool to retrieve NovaCart INTERNAL product performance data (sales metrics, units, revenue, margins, anomalies, operational notes) for the requested month.",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "list",
+          "value": "novacart-finance-assignment",
+          "cachedResultName": "novacart-finance-assignment"
+        },
+        "topK": 12,
+        "options": {
+          "pineconeNamespace": "internal"
+        }
+      },
+      "id": "d49a9108-9cb7-41cc-97d2-2e06404963fc",
+      "name": "Pinecone Tool - Internal",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        -128,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this tool to retrieve insights from EXTERNAL market report PDFs (industry trends, competitor moves, macro signals, forecasts) relevant to NovaCart's performance.",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "list",
+          "value": "novacart-finance-assignment",
+          "cachedResultName": "novacart-finance-assignment"
+        },
+        "topK": 12,
+        "options": {
+          "pineconeNamespace": "external"
+        }
+      },
+      "id": "caf5762f-36c5-48a6-96c6-16851910d08a",
+      "name": "Pinecone Tool - External",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        160,
+        -272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const metaItems = $items('Set Reporting Period');\nconst meta = (metaItems?.[0]?.json) ?? {};\nconst agentOut = $input.first().json;\nlet html = agentOut.output ?? agentOut.text ?? agentOut.response ?? agentOut.answer ?? agentOut.result ?? agentOut;\nif (typeof html !== 'string') { html = JSON.stringify(html, null, 2); }\nhtml = html.replace(/^```(?:html)?\\s*/i, '').replace(/\\s*```$/i, '');\nif (!/<[a-z][\\s\\S]*>/i.test(html)) {\n  const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n  html = `<pre style=\"white-space: pre-wrap;\">${escape(html)}</pre>`;\n}\nconst month = meta.report_month_name ?? '';\nconst year = meta.report_year ?? '';\nconst subject = `NovaCart Monthly Financial Standing Report � ${month} ${year}`.trim();\nreturn [{ json: { ...meta, report_subject: subject, report_html: html } }];"
+      },
+      "id": "540c7de6-5d4a-4fb5-9776-6fd09dac1de5",
+      "name": "Prepare Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "id": "3cf7ab51-3607-443e-9d0b-8442d86f14e1",
+      "name": "Schedule Trigger2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -928,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-large",
+        "options": {
+          "dimensions": 1024
+        }
+      },
+      "id": "485f1607-e94f-40fb-a9d2-5f5571b396ac",
+      "name": "Embeddings OpenAI2",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL_ADDRESS",
+        "subject": "=={{ $json.report_subject }}",
+        "message": "=={{ $json.report_html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        752,
+        -288
+      ],
+      "id": "e602747b-d8be-4774-a216-9e620e94097f",
+      "name": "Send a message",
+      "webhookId": "8e11b067-e12e-46e0-8c56-ed732708e6db"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Drive (List)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive (List)": {
+      "main": [
+        [
+          {
+            "node": "Google Drive (Download)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive (Download)": {
+      "main": [
+        [
+          {
+            "node": "Switch (Filter Types)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Format Rows to Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch (Filter Types)": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pinecone Vector Store (Docs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Rows to Text": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store (Excel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Loader (Excel)": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store (Excel)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store (Excel)",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Pinecone Vector Store (Docs)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store (Docs)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter (Docs)": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Data Loader (Excel)",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Google Drive (List)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive (List)1": {
+      "main": [
+        [
+          {
+            "node": "Google Drive (Download)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive (Download)1": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store (Docs)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store (Docs)1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader1": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store (Docs)1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter (Docs)1": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader1",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Reporting Period": {
+      "main": [
+        [
+          {
+            "node": "Build Report Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Report Request": {
+      "main": [
+        [
+          {
+            "node": "AI Finance Reporting Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Finance Reporting Agent": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Finance Reporting Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Tool - Internal": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Finance Reporting Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Tool - External": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Finance Reporting Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Set Reporting Period",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Tool - Internal",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "Pinecone Tool - External",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0a7857ba-86a8-492f-aa4c-1e3ce31977f5",
+  "meta": {
+    "instanceId": "35af61cdb10af63706b8451b1603885f61fa5f7c5839f5f0bddf787166bda6f7"
+  },
+  "id": "7qK1ju1r7b21Gbez",
+  "tags": [
+    {
+      "updatedAt": "2026-03-01T16:09:35.400Z",
+      "createdAt": "2026-03-01T16:09:35.400Z",
+      "id": "5ImyNkaZhSlkSChe",
+      "name": "W2-Assignment"
+    }
+  ]
+}
